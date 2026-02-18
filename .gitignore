@@ -1,0 +1,18 @@
+# Obsidian
+.obsidian/
+
+# Verilog simulation artifacts
+*.vcd
+*.vvp
+*_sim
+
+# Build outputs
+*.o
+*.a
+*.so
+
+# Editor backups
+*~
+*.swp
+*.swo
+.DS_Store
