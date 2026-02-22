@@ -32,6 +32,108 @@ Interesting, Pmod-DA2 does not really care about SPI mode. And CS lead time is n
 
 
 # Follow Up Action
-- create a test bench for Pmod-DA2
-- develop master SPI interface module, so it passes the test bench.
-- adapt this module to whatever DAC module I can get. 
+- create a test bench for Pmod-DA2 ✓
+- develop master SPI interface module, so it passes the test bench ✓
+- adapt this module to whatever DAC module I can get
+
+## Project Files
+
+### Core Modules
+- **spimaster.v** - SPI Master module with configurable clock divider
+  - 16-bit data transfer (MSB first)
+  - Configurable SPI clock divider
+  - Simple start/busy handshaking
+
+- **spimaster_top.v** - Top-level FPGA module with controller
+  - Instantiates spimaster with stimulus control
+  - Four operating modes:
+    - **Manual Mode (00)**: User-controlled transfers via button and switches
+    - **Auto Pattern Mode (01)**: Automatic cycling through predefined patterns
+    - **Ramp Mode (10)**: Incrementing ramp pattern for DAC
+    - **Sine Wave Mode (11)**: Sine wave generation using lookup table
+  - Button debouncing and edge detection
+  - Status LEDs for busy and mode indication
+  - Suitable for FPGA deployment
+
+### Testbenches
+- **spimaster_tb.v** - Comprehensive testbench for SPI Master
+  - Tests various clock dividers and data patterns
+  - Verifies timing and data integrity
+  - Back-to-back transfer testing
+
+- **spimaster_top_tb.v** - Testbench for top-level module
+  - Tests all four operating modes
+  - Button press simulation
+  - Reset and recovery testing
+  - Clock divider verification
+
+### Build Scripts
+- **build.sh** - Build and simulate spimaster module
+- **build_top.sh** - Build and simulate top-level module with controller
+- **clean.sh** - Clean build artifacts
+
+## Usage
+
+### Simulating the SPI Master
+```bash
+./build.sh
+```
+
+### Simulating the Top Module with Controller
+```bash
+./build_top.sh
+```
+
+### Viewing Waveforms
+```bash
+# For spimaster simulation
+gtkwave spimaster.vcd
+
+# For top module simulation
+gtkwave spimaster_top.vcd
+```
+
+## FPGA Pin Assignments
+
+When deploying to an FPGA board, connect the following signals:
+
+### System Signals
+- `clk` - Main clock input (e.g., 50 MHz, 100 MHz)
+- `rst_btn` - Reset button (active low)
+
+### Control Inputs
+- `mode_sw[1:0]` - Mode selector switches (2 switches)
+- `start_btn` - Manual start button (active high)
+- `clk_div_sw[3:0]` - Clock divider switches (4 switches)
+- `data_sw[7:0]` - Data input switches (8 switches for manual mode)
+
+### Status Outputs
+- `led_busy` - Busy status LED
+- `led_mode[1:0]` - Mode indicator LEDs (2 LEDs)
+
+### SPI Interface (to Pmod)
+- `spi_cs_n` - Chip Select (active low)
+- `spi_sclk` - SPI Clock
+- `spi_mosi` - Master Out Slave In
+
+## Operating Modes
+
+### Manual Mode (mode_sw = 00)
+- Press `start_btn` to initiate SPI transfer
+- Data comes from `data_sw[7:0]` (lower 8 bits)
+- Control bits (4'h3) are automatically prepended for Pmod DA2
+
+### Auto Pattern Mode (mode_sw = 01)
+- Automatically cycles through predefined patterns
+- Transfer occurs approximately every 167ms
+- Patterns: low/mid/high values, alternating patterns
+
+### Ramp Mode (mode_sw = 10)
+- Generates incrementing ramp for DAC output
+- Steps by 64 counts each transfer
+- Creates sawtooth waveform on DAC output
+
+### Sine Wave Mode (mode_sw = 11)
+- Generates sine wave using 64-entry lookup table
+- Produces smooth analog waveform on DAC output
+- Steps through table at regular intervals 
